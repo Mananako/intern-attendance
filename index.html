@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบลงเวลาปฏิบัติงานนักศึกษาฝึกงาน</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Font Prompt -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-3 md:p-6">
+
+    <div class="max-w-xl mx-auto">
+        <!-- เมนูสลับหน้า -->
+        <div class="flex bg-white p-1 rounded-2xl shadow-sm mb-4 border border-slate-200 text-xs md:text-sm font-medium">
+            <button onclick="switchTab('student')" id="btnTabStudent" class="flex-1 py-2.5 rounded-xl transition-all bg-blue-600 text-white shadow-md">
+                📍 ลงเวลา
+            </button>
+            <button onclick="switchTab('register')" id="btnTabRegister" class="flex-1 py-2.5 rounded-xl transition-all text-slate-600 hover:bg-slate-50">
+                📝 ลงทะเบียน
+            </button>
+            <button onclick="switchTab('dashboard')" id="btnTabDashboard" class="flex-1 py-2.5 rounded-xl transition-all text-slate-600 hover:bg-slate-50">
+                📊 พี่เลี้ยง
+            </button>
+        </div>
+
+        <!-- 1. ส่วนของนักศึกษา (Check-in / Check-out) -->
+        <div id="studentTab" class="bg-white rounded-3xl p-5 md:p-8 shadow-sm border border-slate-200">
+            <div class="text-center mb-6">
+                <h1 class="text-xl md:text-2xl font-bold text-slate-800">📍 ลงเวลาปฏิบัติงาน</h1>
+                <p class="text-xs md:text-sm text-slate-500 mt-1">ต้องลงทะเบียนก่อนลงเวลาปฏิบัติงาน</p>
+            </div>
+
+            <form id="attendanceForm" onsubmit="handleSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs md:text-sm font-medium text-slate-700 mb-1">รหัสนักศึกษา <span class="text-red-500">*</span></label>
+                    <input type="text" id="studentId" required placeholder="เช่น 66012345" oninput="fetchStudentName()" onchange="fetchStudentName()" class="w-full px-4 py-3 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all">
+                </div>
+
+                <div>
+                    <label class="block text-xs md:text-sm font-medium text-slate-700 mb-1">ชื่อ - นามสกุล</label>
+                    <input type="text" id="name" readonly required placeholder="ระบบจะดึงชื่อให้อัตโนมัติหลังกรอกรหัส..." class="w-full px-4 py-3 text-sm bg-slate-100 text-slate-700 font-medium rounded-xl border border-slate-200 cursor-not-allowed">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs md:text-sm font-medium text-slate-700 mb-1">วันที่</label>
+                        <input type="text" id="date" readonly class="w-full px-3 py-2.5 text-sm bg-slate-100 text-slate-600 rounded-xl border border-slate-200 cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label class="block text-xs md:text-sm font-medium text-slate-700 mb-1">เวลาปัจจุบัน</label>
+                        <input type="text" id="time" readonly class="w-full px-3 py-2.5 text-sm bg-slate-100 font-bold text-blue-600 rounded-xl border border-slate-200 text-center cursor-not-allowed">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs md:text-sm font-medium text-slate-700 mb-1">พิกัดโลเคชั่น</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="location" readonly placeholder="กำลังดึงพิกัด GPS..." class="w-full px-3 py-2.5 text-xs md:text-sm bg-slate-100 text-slate-600 rounded-xl border border-slate-200 cursor-not-allowed">
+                        <button type="button" onclick="getLocation()" class="px-3 py-2.5 bg-slate-800 text-white rounded-xl text-xs font-medium hover:bg-slate-700 whitespace-nowrap active:scale-95 transition-all">
+                            ดึงพิกัด
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs md:text-sm font-medium text-slate-700 mb-1">แนบรูปภาพ (อัปโหลดจากเครื่อง) <span class="text-red-500">*</span></label>
+                    <input type="file" id="imageInput" accept="image/*" required class="w-full text-xs md:text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                </div>
+
+                <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+                    ⚠️ <strong>เงื่อนไขเวลา:</strong><br>
+                    - เช็คอินเข้างานหลัง 08:00 น. จะถูกบันทึกสถานะว่า <strong>"มาสาย"</strong><br>
+                    - ลงชื่อออกงานได้ตั้งแต่เวลา <strong>16:00 น. เป็นต้นไป</strong>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                    <button type="submit" onclick="setAction('checkIn')" class="w-full py-3.5 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 active:scale-95 transition-all text-sm md:text-base shadow-md shadow-emerald-200">
+                        🟢 เช็คอิน (เข้างาน)
+                    </button>
+                    <button type="submit" onclick="setAction('checkOut')" class="w-full py-3.5 bg-rose-600 text-white font-semibold rounded-xl hover:bg-rose-700 active:scale-95 transition-all text-sm md:text-base shadow-md shadow-rose-200">
+                        🔴 เช็คเอาท์ (ออกงาน)
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 2. ส่วนลงทะเบียนนักศึกษาใหม่ (Register Tab) -->
+        <div id="registerTab" class="bg-white rounded-3xl p-5 md:p-8 shadow-sm border border-slate-200 hidden">
+            <div class="text-center mb-6">
+                <h1 class="text-xl md:text-2xl font-bold text-slate-800">📝 ลงทะเบียนนักศึกษาฝึกงาน</h1>
+                <p class="text-xs md:text-sm text-slate-500 mt-1">ลงทะเบียนเพื่อเพิ่มรายชื่อเข้าสู่ระบบ</p>
+            </div>
+
+            <form onsubmit="handleRegister(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs md:text-sm font-medium text-slate-700 mb-1">รหัสนักศึกษา <span class="text-red-500">*</span></label>
+                    <input type="text" id="regStudentId" required placeholder="เช่น 66012345" class="w-full px-4 py-3 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all">
+                </div>
+
+                <div>
+                    <label class="block text-xs md:text-sm font-medium text-slate-700 mb-1">ชื่อ - นามสกุล <span class="text-red-500">*</span></label>
+                    <input type="text" id="regName" required placeholder="เช่น นายสมชาย ใจดี" class="w-full px-4 py-3 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all">
+                </div>
+
+                <button type="submit" class="w-full py-3.5 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 active:scale-95 transition-all text-sm md:text-base shadow-md shadow-blue-200 mt-2">
+                    ✅ บันทึกการลงทะเบียน
+                </button>
+            </form>
+        </div>
+
+        <!-- 3. ส่วนของพี่เลี้ยง (Dashboard) -->
+        <div id="dashboardTab" class="bg-white rounded-3xl p-4 md:p-6 shadow-sm border border-slate-200 hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg md:text-xl font-bold text-slate-800">📋 ตรวจสอบเวลาเข้า-ออก</h2>
+                <button onclick="loadDashboardData()" class="px-3 py-1.5 bg-blue-50 text-blue-600 text-xs md:text-sm font-medium rounded-xl hover:bg-blue-100 active:scale-95 transition-all flex items-center gap-1">
+                    🔄 รีเฟรช
+                </button>
+            </div>
+
+            <div class="overflow-x-auto rounded-2xl border border-slate-200">
+                <table class="w-full text-left border-collapse text-xs md:text-sm min-w-[650px]">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-700 border-b border-slate-200">
+                            <th class="p-3 font-semibold">รหัส</th>
+                            <th class="p-3 font-semibold">ชื่อ-นามสกุล</th>
+                            <th class="p-3 font-semibold">วันที่</th>
+                            <th class="p-3 font-semibold">เวลาเข้า</th>
+                            <th class="p-3 font-semibold">สถานะ</th>
+                            <th class="p-3 font-semibold">เวลาออก</th>
+                            <th class="p-3 font-semibold text-center">หลักฐาน</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-100 text-slate-600">
+                        <tr>
+                            <td colspan="7" class="p-6 text-center text-slate-400">กำลังโหลดข้อมูล...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center gap-3">
+            <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <p id="loadingText" class="text-sm font-medium text-slate-700">กำลังดำเนินการ...</p>
+        </div>
+    </div>
+
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxIzJdSMf5U2ZhLQylGQOlefakIrqBjuDEjqAN_5nof-lePolXPfUS3vrNtIHcMi6pK/exec"; 
+
+        let currentAction = "";
+        let studentList = [];
+
+        async function loadStudentList() {
+            try {
+                const response = await fetch(`${SCRIPT_URL}?type=getStudents`);
+                const result = await response.json();
+                if (result.success) {
+                    studentList = result.data;
+                }
+            } catch (err) {
+                console.error(" Error loading students: ", err);
+            }
+        }
+        loadStudentList();
+
+        // ค้นหาชื่อตามรหัสนักศึกษาอัตโนมัติ
+        function fetchStudentName() {
+            const inputId = document.getElementById('studentId').value.trim();
+            const nameInput = document.getElementById('name');
+
+            if (!inputId) {
+                nameInput.value = "";
+                return;
+            }
+
+            let found = false;
+            for (let i = 1; i < studentList.length; i++) {
+                if (String(studentList[i][0]).trim() === inputId) {
+                    nameInput.value = studentList[i][1];
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found && inputId.length >= 4) {
+                nameInput.value = "⚠️ ไม่พบรายชื่อ (ต้องลงทะเบียนก่อน)";
+            }
+        }
+
+        // นาฬิกาเรียลไทม์
+        function updateClock() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            
+            document.getElementById('date').value = `${year}-${month}-${day}`;
+            document.getElementById('time').value = `${hours}:${minutes}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        document.getElementById('location').value = `${lat}, ${lng}`;
+                    },
+                    error => {
+                        alert("ไม่สามารถดึงพิกัดตำแหน่งได้ กรุณาเปิด GPS");
+                    }
+                );
+            } else {
+                alert("เบราว์เซอร์นี้ไม่รองรับการระบุพิกัด GPS");
+            }
+        }
+        getLocation();
+
+        function setAction(action) {
+            currentAction = action;
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // ฟังก์ชันลงทะเบียน
+        async function handleRegister(event) {
+            event.preventDefault();
+
+            showLoading("กำลังลงทะเบียน...");
+
+            const payload = {
+                action: "register",
+                studentId: document.getElementById('regStudentId').value,
+                name: document.getElementById('regName').value
+            };
+
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                hideLoading();
+
+                alert(result.message);
+                if (result.success) {
+                    document.getElementById('regStudentId').value = "";
+                    document.getElementById('regName').value = "";
+                    await loadStudentList(); // รีโหลดรายชื่อใหม่เข้าความจำ
+                }
+            } catch (err) {
+                hideLoading();
+                alert("เกิดข้อผิดพลาดในการลงทะเบียน");
+            }
+        }
+
+        // ฟังก์ชันลงเวลาปฏิบัติงาน
+        async function handleSubmit(event) {
+            event.preventDefault();
+
+            const nameValue = document.getElementById('name').value;
+            if (nameValue.includes("ไม่พบรายชื่อ") || !nameValue) {
+                alert("❌ ไม่สามารถลงเวลาได้!\nรหัสนักศึกษานี้ยังไม่ได้ลงทะเบียน กรุณาไปลงทะเบียนก่อนครับ");
+                return;
+            }
+
+            const timeValue = document.getElementById('time').value;
+            const hour = parseInt(timeValue.split(':')[0]);
+
+            if (currentAction === "checkOut" && hour < 16) {
+                alert("⚠️ ยังไม่ถึงเวลาลงชื่อออกงาน!\n(สามารถลงชื่อออกได้ตั้งแต่เวลา 16:00 น. เป็นต้นไป)");
+                return;
+            }
+
+            const imageFile = document.getElementById('imageInput').files[0];
+            if (!imageFile) {
+                alert("กรุณาเลือกแนบรูปภาพ!");
+                return;
+            }
+
+            showLoading("กำลังบันทึกข้อมูล...");
+
+            try {
+                const base64Image = await fileToBase64(imageFile);
+                
+                const payload = {
+                    action: currentAction,
+                    studentId: document.getElementById('studentId').value,
+                    name: nameValue,
+                    date: document.getElementById('date').value,
+                    time: document.getElementById('time').value,
+                    location: document.getElementById('location').value,
+                    image: base64Image
+                };
+
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                hideLoading();
+
+                alert(result.message);
+
+                if (result.success) {
+                    document.getElementById('imageInput').value = "";
+                }
+            } catch (error) {
+                hideLoading();
+                alert("เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่อีกครั้ง");
+            }
+        }
+
+        function showLoading(text) {
+            document.getElementById('loadingText').innerText = text;
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        function switchTab(tab) {
+            const studentTab = document.getElementById('studentTab');
+            const registerTab = document.getElementById('registerTab');
+            const dashboardTab = document.getElementById('dashboardTab');
+
+            const btnTabStudent = document.getElementById('btnTabStudent');
+            const btnTabRegister = document.getElementById('btnTabRegister');
+            const btnTabDashboard = document.getElementById('btnTabDashboard');
+
+            studentTab.classList.add('hidden');
+            registerTab.classList.add('hidden');
+            dashboardTab.classList.add('hidden');
+
+            const defaultBtnClass = "flex-1 py-2.5 rounded-xl transition-all text-slate-600 hover:bg-slate-50";
+            const activeBtnClass = "flex-1 py-2.5 rounded-xl transition-all bg-blue-600 text-white shadow-md";
+
+            btnTabStudent.className = defaultBtnClass;
+            btnTabRegister.className = defaultBtnClass;
+            btnTabDashboard.className = defaultBtnClass;
+
+            if (tab === 'student') {
+                studentTab.classList.remove('hidden');
+                btnTabStudent.className = activeBtnClass;
+                loadStudentList(); // อัปเดตรายชื่อนักศึกษาใหม่
+            } else if (tab === 'register') {
+                registerTab.classList.remove('hidden');
+                btnTabRegister.className = activeBtnClass;
+            } else if (tab === 'dashboard') {
+                dashboardTab.classList.remove('hidden');
+                btnTabDashboard.className = activeBtnClass;
+                loadDashboardData();
+            }
+        }
+
+        async function loadDashboardData() {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">กำลังดึงข้อมูล...</td></tr>`;
+
+            try {
+                const response = await fetch(SCRIPT_URL);
+                const result = await response.json();
+
+                if (result.success && result.data.length > 1) {
+                    let rowsHtml = "";
+                    for (let i = 1; i < result.data.length; i++) {
+                        const row = result.data[i];
+                        const studentId = row[0] || "-";
+                        const name = row[1] || "-";
+                        const date = row[2] || "-";
+                        const timeIn = row[3] || "-";
+                        const statusIn = row[4] || "-";
+                        const imgIn = row[6];
+                        const timeOut = row[7] || "-";
+                        const imgOut = row[9];
+
+                        const statusBadge = statusIn === "มาสาย" 
+                            ? `<span class="px-2 py-0.5 text-xs bg-rose-100 text-rose-600 font-medium rounded-md">มาสาย</span>`
+                            : `<span class="px-2 py-0.5 text-xs bg-emerald-100 text-emerald-600 font-medium rounded-md">ปกติ</span>`;
+
+                        let imgLinks = [];
+                        if (imgIn) imgLinks.push(`<a href="${imgIn}" target="_blank" class="text-blue-600 hover:underline">รูปเข้า</a>`);
+                        if (imgOut) imgLinks.push(`<a href="${imgOut}" target="_blank" class="text-rose-600 hover:underline">รูปออก</a>`);
+
+                        rowsHtml += `
+                            <tr class="hover:bg-slate-50 border-b border-slate-100">
+                                <td class="p-3 font-medium text-slate-800">${studentId}</td>
+                                <td class="p-3">${name}</td>
+                                <td class="p-3 text-xs text-slate-500">${date}</td>
+                                <td class="p-3 font-medium text-slate-700">${timeIn}</td>
+                                <td class="p-3">${statusBadge}</td>
+                                <td class="p-3 font-medium text-slate-700">${timeOut}</td>
+                                <td class="p-3 text-center text-xs">${imgLinks.join(' | ') || '-'}</td>
+                            </tr>
+                        `;
+                    }
+                    tableBody.innerHTML = rowsHtml;
+                } else {
+                    tableBody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">ยังไม่มีข้อมูลการลงเวลา</td></tr>`;
+                }
+            } catch (error) {
+                tableBody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-rose-500">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>`;
+            }
+        }
+    </script>
+</body>
+</html>
